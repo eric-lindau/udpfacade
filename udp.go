@@ -11,7 +11,6 @@ import (
 	"runtime"
 )
 
-// TODO Add conn closing
 // TODO Determine if pool of sockets might be effective
 
 // A lot of credit to Graham King for this fantastic article:
@@ -34,7 +33,7 @@ func WriteTo(b []byte, src *net.IPAddr, dst *net.UDPAddr) error {
 	}
 
 	p := gopacket.NewSerializeBuffer()
-	if err := craftPacket(b, &p, src.IP, dst.IP); err != nil {
+	if err := craftPacket(b, &p, &src.IP, dst); err != nil {
 		return err
 	}
 
@@ -42,11 +41,12 @@ func WriteTo(b []byte, src *net.IPAddr, dst *net.UDPAddr) error {
 		return err
 	}
 
+	syscall.Close(fd) // TODO Ensure conn closes quickly
+
 	return nil
 }
 
-// TODO UDP & insert bytes
-func craftPacket(b []byte, p *gopacket.SerializeBuffer, src net.IP, dst net.IP) error {
+func craftPacket(b []byte, p *gopacket.SerializeBuffer, src *net.IP, dst *net.UDPAddr) error {
 	opts := gopacket.SerializeOptions{
 		FixLengths: true,
 	}
@@ -54,14 +54,18 @@ func craftPacket(b []byte, p *gopacket.SerializeBuffer, src net.IP, dst net.IP) 
 	ipv4 := layers.IPv4{
 		Version:    4,
 		IHL:        5,
-		SrcIP:      src,
-		DstIP:      dst,
+		FragOffset: 16,
 		TTL:        64,
 		Protocol:   layers.IPProtocolUDP,
-		FragOffset: 16,
-		Flags:      layers.IPv4DontFragment,
+		SrcIP:      *src,
+		DstIP:      (*dst).IP,
 	}
-	if err := gopacket.SerializeLayers(*p, opts, &ipv4); err != nil {
+
+	udp := layers.UDP{
+		DstPort: layers.UDPPort(dst.Port),
+	}
+
+	if err := gopacket.SerializeLayers(*p, opts, &ipv4, &udp, gopacket.Payload(b)); err != nil {
 		panic(err)
 	}
 
