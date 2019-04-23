@@ -17,7 +17,7 @@ import (
 // https://www.darkcoding.net/software/raw-sockets-in-go-link-layer/
 
 // NOTE: Requires sudo for raw socket
-func WriteTo(b []byte, src *net.IPAddr, dst *net.UDPAddr) error {
+func WriteTo(b []byte, src *net.UDPAddr, dst *net.UDPAddr) error {
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
 		return err
@@ -33,7 +33,7 @@ func WriteTo(b []byte, src *net.IPAddr, dst *net.UDPAddr) error {
 	}
 
 	p := gopacket.NewSerializeBuffer()
-	if err := craftPacket(b, &p, &src.IP, dst); err != nil {
+	if err := craftPacket(b, &p, src, dst); err != nil {
 		return err
 	}
 
@@ -46,27 +46,29 @@ func WriteTo(b []byte, src *net.IPAddr, dst *net.UDPAddr) error {
 	return nil
 }
 
-func craftPacket(b []byte, p *gopacket.SerializeBuffer, src *net.IP, dst *net.UDPAddr) error {
+func craftPacket(b []byte, p *gopacket.SerializeBuffer, src *net.UDPAddr, dst *net.UDPAddr) error {
 	opts := gopacket.SerializeOptions{
-		FixLengths: true,
+		FixLengths:       true,
+		ComputeChecksums: true,
 	}
 
 	ipv4 := layers.IPv4{
-		Version:    4,
-		IHL:        5,
-		FragOffset: 16,
-		TTL:        64,
-		Protocol:   layers.IPProtocolUDP,
-		SrcIP:      *src,
-		DstIP:      (*dst).IP,
+		Version:  4,
+		IHL:      5,
+		TTL:      64,
+		Protocol: layers.IPProtocolUDP,
+		SrcIP:    (*src).IP,
+		DstIP:    (*dst).IP,
 	}
 
 	udp := layers.UDP{
+		SrcPort: layers.UDPPort(src.Port),
 		DstPort: layers.UDPPort(dst.Port),
 	}
+	udp.SetNetworkLayerForChecksum(&ipv4)
 
 	if err := gopacket.SerializeLayers(*p, opts, &ipv4, &udp, gopacket.Payload(b)); err != nil {
-		panic(err)
+		return err
 	}
 
 	switch runtime.GOOS { // NOTE: freebsd < version 11 not supported

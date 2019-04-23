@@ -18,9 +18,14 @@ func TestWriteTo(t *testing.T) {
 		IP: net.IPv4(127, 0, 0, 1),
 	}
 
-	err := WriteTo([]byte("a"), spoof, &net.UDPAddr{
-		IP: self.IP, Port: dstPort, Zone: "",
-	})
+	err := WriteTo([]byte("a"),
+		&net.UDPAddr{
+			IP: spoof.IP, Port: 1234, Zone: "",
+		},
+		&net.UDPAddr{
+			IP: self.IP, Port: dstPort, Zone: "",
+		})
+
 	if err != nil {
 		t.Error(err)
 	}
