@@ -51,8 +51,16 @@ func (c *UDPConn) Write(b []byte) (int, error) {
 	if err := craftPacket(b, &p, c.Src, c.Dst); err != nil {
 		return 0, err
 	}
+	bytes := p.Bytes()
 
-	return c.conn.Write(p.Bytes())
+	written, err := c.conn.Write(bytes)
+	if written == len(bytes) {
+		return len(b), err
+	} else if written < len(bytes) - len(b) {
+		return 0, err
+	} else {
+		return written - len(bytes), err
+	}
 }
 
 func (c *UDPConn) Close() error {
