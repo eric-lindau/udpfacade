@@ -12,11 +12,11 @@ const (
 // NOTE: Requires sudo. Wireshark recommended to see results (no server setup required).
 func TestWriteTo(t *testing.T) {
 	spoof := &net.UDPAddr{
-		IP: net.IPv4(1, 2, 3, 4),
+		IP:   net.IPv4(1, 2, 3, 4),
 		Port: 1234,
 	}
 	self := &net.UDPAddr{
-		IP: net.IPv4(127, 0, 0, 1),
+		IP:   net.IPv4(127, 0, 0, 1),
 		Port: dstPort,
 	}
 
