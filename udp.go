@@ -9,13 +9,13 @@ import (
 	"encoding/binary"
 	"unsafe"
 	"runtime"
+	"fmt"
 )
 
 // IMPLEMENT LATER: sync Pool for efficiency
 
 type UDPConn struct {
-	sock int
-	to   *syscall.SockaddrInet4
+	conn *net.IPConn
 	Src  *net.UDPAddr
 	Dst  *net.UDPAddr
 }
@@ -23,42 +23,33 @@ type UDPConn struct {
 // Sets up connection using the src properties for outgoing UDP/IP headers.
 // NOTE: Requires sudo for raw socket
 func DialUDPFrom(src *net.UDPAddr, dst *net.UDPAddr) (*UDPConn, error) {
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
+	conn, err := net.DialIP(fmt.Sprintf("ip:%d", syscall.IPPROTO_RAW), nil, &net.IPAddr{
+		IP: src.IP, Zone: "",
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_HDRINCL, 1); err != nil {
+	f, err := conn.File()
+	fd := f.Fd()
+	if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_HDRINCL, 1); err != nil {
 		return nil, err
 	}
 
-	to := &syscall.SockaddrInet4{
-		Addr: [4]byte{dst.IP[0], dst.IP[1], dst.IP[2], dst.IP[3]},
-		Port: 0,
-	}
-
-	return &UDPConn{sock: fd, to: to, Src: src, Dst: dst}, nil
+	return &UDPConn{conn: conn, Src: src, Dst: dst}, nil
 }
 
-func (c *UDPConn) Write(b []byte) error {
+func (c *UDPConn) Write(b []byte) (int, error) {
 	p := gopacket.NewSerializeBuffer()
 	if err := craftPacket(b, &p, c.Src, c.Dst); err != nil {
-		return err
+		return 0, err
 	}
 
-	if err := syscall.Sendto(c.sock, p.Bytes(), 0, c.to); err != nil {
-		return err
-	}
-
-	return nil
+	return c.conn.Write(p.Bytes())
 }
 
 func (c *UDPConn) Close() error {
-	if err := syscall.Close(c.sock); err != nil {
-		return err
-	}
-
-	return nil
+	return c.conn.Close()
 }
 
 func craftPacket(b []byte, p *gopacket.SerializeBuffer, src *net.UDPAddr, dst *net.UDPAddr) error {

@@ -25,10 +25,10 @@ func TestWriteTo(t *testing.T) {
 		t.Error(err)
 	}
 
-	if err := conn.Write([]byte("aa")); err != nil {
+	if _, err := conn.Write([]byte("aa")); err != nil {
 		t.Error(err)
 	}
-	if err := conn.Write([]byte("bb")); err != nil {
+	if _, err := conn.Write([]byte("bb")); err != nil {
 		t.Error(err)
 	}
 
