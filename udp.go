@@ -4,27 +4,32 @@ import (
 	"syscall"
 	"net"
 	"github.com/google/gopacket"
-	//"github.com/google/gopacket/layers"
+	//"github.com/google/gopacket/layers" --- Currently bugged for some raw IPv4 sockets
 	"github.com/eric-lindau/gopacket/layers"
 	"encoding/binary"
 	"unsafe"
 	"runtime"
 )
 
-// TODO Determine if pool of sockets might be effective
+// IMPLEMENT LATER: sync Pool for efficiency
 
-// A lot of credit to Graham King for this fantastic article:
-// https://www.darkcoding.net/software/raw-sockets-in-go-link-layer/
+type UDPConn struct {
+	sock int
+	to   *syscall.SockaddrInet4
+	Src  *net.UDPAddr
+	Dst  *net.UDPAddr
+}
 
+// Sets up connection using the src properties for outgoing UDP/IP headers.
 // NOTE: Requires sudo for raw socket
-func WriteTo(b []byte, src *net.UDPAddr, dst *net.UDPAddr) error {
+func DialUDPFrom(src *net.UDPAddr, dst *net.UDPAddr) (*UDPConn, error) {
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_HDRINCL, 1); err != nil {
-		return err
+		return nil, err
 	}
 
 	to := &syscall.SockaddrInet4{
@@ -32,16 +37,26 @@ func WriteTo(b []byte, src *net.UDPAddr, dst *net.UDPAddr) error {
 		Port: 0,
 	}
 
+	return &UDPConn{sock: fd, to: to, Src: src, Dst: dst}, nil
+}
+
+func (c *UDPConn) Write(b []byte) error {
 	p := gopacket.NewSerializeBuffer()
-	if err := craftPacket(b, &p, src, dst); err != nil {
+	if err := craftPacket(b, &p, c.Src, c.Dst); err != nil {
 		return err
 	}
 
-	if err := syscall.Sendto(fd, p.Bytes(), 0, to); err != nil {
+	if err := syscall.Sendto(c.sock, p.Bytes(), 0, c.to); err != nil {
 		return err
 	}
 
-	syscall.Close(fd) // TODO Ensure conn closes quickly
+	return nil
+}
+
+func (c *UDPConn) Close() error {
+	if err := syscall.Close(c.sock); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -79,6 +94,7 @@ func craftPacket(b []byte, p *gopacket.SerializeBuffer, src *net.UDPAddr, dst *n
 	return nil
 }
 
+// Native endianness detection for syscalls on some platforms
 // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/go/tensor.go#L488-L505
 var nativeEndian binary.ByteOrder
 
