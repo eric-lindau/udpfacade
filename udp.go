@@ -4,14 +4,14 @@ import (
 	"syscall"
 	"net"
 	"github.com/google/gopacket"
-	//"github.com/google/gopacket/layers" --- Currently bugged for some raw IPv4 sockets
-	"github.com/eric-lindau/gopacket/layers"
+	"github.com/google/gopacket/layers" // Currently bugged for some raw IPv4 sockets
 	"encoding/binary"
 	"unsafe"
 	"runtime"
 	"fmt"
 	"errors"
 	"time"
+	layers2 "github.com/eric-lindau/udpfacade/layers"
 )
 
 // IMPLEMENT LATER: sync Pool for efficiency
@@ -106,7 +106,7 @@ func craftPacket(b []byte, p *gopacket.SerializeBuffer, src *net.UDPAddr, dst *n
 
 	switch runtime.GOOS { // NOTE: freebsd < version 11 not supported
 	case "darwin", "dragonfly", "openbsd":
-		ipv4.RawSocketByteOrder(*p, nativeEndian)
+		layers2.RawSocketByteOrder(&ipv4, *p, nativeEndian)
 	}
 
 	return nil
