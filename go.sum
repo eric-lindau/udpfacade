@@ -1,0 +1,4 @@
+github.com/eric-lindau/gopacket v1.1.16 h1:1fZcPqS6LMJE+yQh5nrKwcGTEgUYUVILj3zEpWxuj3Q=
+github.com/eric-lindau/gopacket v1.1.16/go.mod h1:SmxJtKn0GruUippEEyyXI4vBQf2QBl9dY+5HG3g/s9c=
+github.com/google/gopacket v1.1.16 h1:u6Afvia5C5srlLcbTwpHaFW918asLYPxieziOaWwz8M=
+github.com/google/gopacket v1.1.16/go.mod h1:UCLx9mCmAwsVbn6qQl1WIEt2SO7Nd2fD0th1TBAsqBw=
