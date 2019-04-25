@@ -10,10 +10,13 @@ import (
 	"unsafe"
 	"runtime"
 	"fmt"
+	"errors"
+	"time"
 )
 
 // IMPLEMENT LATER: sync Pool for efficiency
 
+// Transparent UDP connection
 type UDPConn struct {
 	conn *net.IPConn
 	Src  *net.UDPAddr
@@ -39,6 +42,10 @@ func DialUDPFrom(src *net.UDPAddr, dst *net.UDPAddr) (*UDPConn, error) {
 	return &UDPConn{conn: conn, Src: src, Dst: dst}, nil
 }
 
+func (c *UDPConn) Read(b []byte) (int, error) {
+	return -1, errors.New("cannot read from transparent udp connection")
+}
+
 func (c *UDPConn) Write(b []byte) (int, error) {
 	p := gopacket.NewSerializeBuffer()
 	if err := craftPacket(b, &p, c.Src, c.Dst); err != nil {
@@ -50,6 +57,26 @@ func (c *UDPConn) Write(b []byte) (int, error) {
 
 func (c *UDPConn) Close() error {
 	return c.conn.Close()
+}
+
+func (c *UDPConn) LocalAddr() net.Addr {
+	return c.conn.LocalAddr()
+}
+
+func (c *UDPConn) RemoteAddr() net.Addr {
+	return c.conn.RemoteAddr()
+}
+
+func (c *UDPConn) SetDeadline(t time.Time) error {
+	return c.conn.SetDeadline(t)
+}
+
+func (c *UDPConn) SetReadDeadline(t time.Time) error {
+	return c.conn.SetReadDeadline(t)
+}
+
+func (c *UDPConn) SetWriteDeadline(t time.Time) error {
+	return c.conn.SetWriteDeadline(t)
 }
 
 func craftPacket(b []byte, p *gopacket.SerializeBuffer, src *net.UDPAddr, dst *net.UDPAddr) error {
