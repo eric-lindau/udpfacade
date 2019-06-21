@@ -5,6 +5,8 @@ package udpfacade
 import (
 	"net"
 	"errors"
+	"time"
+	"github.com/google/gopacket"
 )
 
 // Transparent UDP connection
@@ -28,27 +30,27 @@ func (c *UDPConn) Write(b []byte) (int, error) {
 }
 
 func (c *UDPConn) Close() error {
-    return nil
+	return nil
 }
 
 func (c *UDPConn) LocalAddr() net.Addr {
-    return nil
+	return nil
 }
 
 func (c *UDPConn) RemoteAddr() net.Addr {
-    return nil
+	return nil
 }
 
 func (c *UDPConn) SetDeadline(t time.Time) error {
-    return nil
+	return nil
 }
 
 func (c *UDPConn) SetReadDeadline(t time.Time) error {
-    return nil
+	return nil
 }
 
 func (c *UDPConn) SetWriteDeadline(t time.Time) error {
-    return nil
+	return nil
 }
 
 func craftPacket(b []byte, p *gopacket.SerializeBuffer, src *net.UDPAddr, dst *net.UDPAddr) error {
